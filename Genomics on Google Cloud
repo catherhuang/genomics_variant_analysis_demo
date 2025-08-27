@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SPA: Genomic Variant Analysis on Google Cloud</title>
+    <!-- Chosen Palette: Bio-Cloud Neutral -->
+    <!-- Application Structure Plan: A thematic, single-page scrolling application designed for user exploration. The structure starts with a high-level value proposition (Challenge vs. Solution), allows a deep dive into the technical details (Interactive Architecture), breaks down the process (Workflow Steps), and concludes with the tangible business impact (Results & Savings). This non-linear, thematic structure was chosen over the report's linear format to allow different user personas (e.g., a manager vs. a scientist) to quickly find the information most relevant to them, enhancing usability and engagement. Key interactions include clickable toggles for comparing metrics and hover-to-reveal details on the architecture diagram. -->
+    <!-- Visualization & Content Choices: 
+        1. Report Info: Comparison Table (Speed, Cost, etc.) -> Goal: Compare old vs. new processes -> Viz/Method: Interactive side-by-side cards with animated bars -> Interaction: User clicks metric buttons to update content -> Justification: More engaging and focused than a static table, allowing users to digest one key benefit at a time -> Library/Method: Vanilla JS + Tailwind CSS.
+        2. Report Info: Architecture Diagram -> Goal: Explain the technical workflow -> Viz/Method: Diagram built with structured HTML/CSS (Flexbox) and icons -> Interaction: Hovering over service blocks reveals detailed tooltips -> Justification: Makes the technical architecture self-explanatory and interactive without cluttering the UI -> Library/Method: Vanilla JS + Tailwind CSS.
+        3. Report Info: Implied outcome of analysis (GWAS results) -> Goal: Show tangible scientific output and add a "wow" factor -> Viz/Method: A dynamic scatter plot simulating a Manhattan Plot -> Interaction: Chart.js tooltips on data points -> Justification: Provides a powerful, visually impressive conclusion that directly relates to the scientific goal -> Library/Method: Chart.js (Canvas).
+        4. Report Info: Implied quantitative benefits (Time/Cost Savings) -> Goal: Quantify the business impact -> Viz/Method: A dynamic grouped bar chart -> Interaction: Chart.js tooltips on bars -> Justification: Provides a clear, direct visual comparison of the key business metrics -> Library/Method: Chart.js (Canvas). -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; height: 400px; max-height: 50vh; }
+        @media (max-width: 768px) { .chart-container { height: 350px; } }
+        .service-card-tooltip {
+            display: none;
+            position: absolute;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: opacity 0.3s;
+        }
+        .service-card:hover .service-card-tooltip {
+            display: block;
+        }
+        .comparison-bar-inner {
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold text-slate-900">
+                Genomics on <span class="text-blue-600">Google Cloud</span>
+            </div>
+            <div class="hidden md:flex space-x-8">
+                <a href="#comparison" class="text-slate-600 hover:text-blue-600">Comparison</a>
+                <a href="#architecture" class="text-slate-600 hover:text-blue-600">Architecture</a>
+                <a href="#workflow" class="text-slate-600 hover:text-blue-600">Workflow</a>
+                <a href="#impact" class="text-slate-600 hover:text-blue-600">Impact</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12 md:py-20">
+
+        <!-- Hero Section -->
+        <section class="text-center mb-20 md:mb-32">
+            <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-slate-900">From Weeks to Hours</h1>
+            <p class="mt-6 text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">An interactive exploration of a cloud-native workflow that revolutionizes large-scale genomic analysis, delivering faster insights at a fraction of the cost.</p>
+        </section>
+
+        <!-- Comparison Section -->
+        <section id="comparison" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">The Cloud Advantage</h2>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">This section provides a direct comparison between legacy, on-premises computing and the modern Google Cloud approach. Click on each metric to see how the cloud transforms the process, making research more agile and cost-effective.</p>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-10">
+                <div class="flex flex-wrap justify-center gap-2 md:gap-4 mb-8" id="comparison-buttons">
+                    <button data-metric="speed" class="comparison-btn bg-blue-600 text-white px-4 py-2 rounded-full font-semibold">Speed</button>
+                    <button data-metric="scalability" class="comparison-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Scalability</button>
+                    <button data-metric="cost" class="comparison-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Cost</button>
+                    <button data-metric="analytics" class="comparison-btn bg-white text-slate-700 px-4 py-2 rounded-full font-semibold border border-slate-300">Analytics</button>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- Traditional Column -->
+                    <div class="border border-slate-200 rounded-lg p-6">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Traditional HPC</h3>
+                        <div class="w-full bg-slate-200 rounded-full h-4 mb-4">
+                            <div id="bar-traditional" class="comparison-bar-inner bg-slate-400 h-4 rounded-full" style="width: 80%;"></div>
+                        </div>
+                        <p id="desc-traditional" class="text-slate-600 min-h-[100px]"><strong>Weeks to Months.</strong> Analysis is bottlenecked by fixed cluster capacity and long job queues, significantly delaying critical research milestones.</p>
+                    </div>
+                    <!-- Google Cloud Column -->
+                    <div class="border-2 border-blue-500 rounded-lg p-6 bg-blue-50/50">
+                        <h3 class="text-2xl font-bold mb-4 text-center text-blue-700">Google Cloud</h3>
+                         <div class="w-full bg-blue-200 rounded-full h-4 mb-4">
+                            <div id="bar-cloud" class="comparison-bar-inner bg-blue-500 h-4 rounded-full" style="width: 10%;"></div>
+                        </div>
+                        <p id="desc-cloud" class="text-slate-600 min-h-[100px]"><strong>Hours.</strong> Massively parallel processing using thousands of on-demand cores reduces computation time from months to mere hours, accelerating the pace of discovery.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Cloud-Native Architecture</h2>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">This workflow is built on a foundation of powerful, integrated Google Cloud services. Hover over each component in the diagram below to understand its specific role in creating a seamless and scalable data pipeline, from raw data ingestion to final analysis.</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl p-6 md:p-10">
+                <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4 text-center">
+                    
+                    <div class="service-card relative flex flex-col items-center p-4">
+                        <div class="text-6xl mb-2">☁️</div>
+                        <h4 class="font-bold text-lg">Cloud Storage</h4>
+                        <p class="text-sm text-slate-500">Data Lake</p>
+                        <div class="service-card-tooltip w-64 bg-slate-800 text-white text-xs rounded py-2 px-3">Scalable and durable object storage for raw genomic files and results.</div>
+                    </div>
+
+                    <div class="text-2xl font-light text-slate-400 mx-4">➡️</div>
+
+                    <div class="service-card relative flex flex-col items-center p-4">
+                        <div class="text-6xl mb-2">⚙️</div>
+                        <h4 class="font-bold text-lg">Cloud Batch</h4>
+                        <p class="text-sm text-slate-500">Compute Engine</p>
+                        <div class="service-card-tooltip w-64 bg-slate-800 text-white text-xs rounded py-2 px-3">Orchestrates the containerized GATK pipeline at massive scale, managing thousands of VMs on demand.</div>
+                    </div>
+
+                    <div class="text-2xl font-light text-slate-400 mx-4">➡️</div>
+                    
+                    <div class="service-card relative flex flex-col items-center p-4">
+                        <div class="text-6xl mb-2">📊</div>
+                        <h4 class="font-bold text-lg">BigQuery</h4>
+                        <p class="text-sm text-slate-500">Analytics Warehouse</p>
+                         <div class="service-card-tooltip w-64 bg-slate-800 text-white text-xs rounded py-2 px-3">A serverless data warehouse for storing variant data and running interactive, large-scale SQL queries.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workflow Section -->
+        <section id="workflow" class="mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">The Demo in Action</h2>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">The entire end-to-end process is simplified into three core steps. This section visualizes the journey from raw data to actionable insight, demonstrating the efficiency and simplicity of the automated cloud pipeline.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8 text-center">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-5xl mb-4">📤</div>
+                    <h3 class="text-2xl font-bold mb-2">1. Upload Data</h3>
+                    <p class="text-slate-600">Raw genomic sequence data is uploaded to a secure and scalable Google Cloud Storage bucket.</p>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-5xl mb-4">🔬</div>
+                    <h3 class="text-2xl font-bold mb-2">2. Run Analysis</h3>
+                    <p class="text-slate-600">A job is submitted to Cloud Batch, which automatically provisions resources to run the GATK variant calling pipeline.</p>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-5xl mb-4">💡</div>
+                    <h3 class="text-2xl font-bold mb-2">3. Load & Query</h3>
+                    <p class="text-slate-600">Results are loaded into BigQuery, where scientists can immediately run complex queries to find significant genetic variants.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Impact Section -->
+        <section id="impact">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900">Visualizing the Impact</h2>
+                <p class="mt-4 text-lg text-slate-600 max-w-3xl mx-auto">The final output isn't just data, it's discovery. The charts below represent the tangible outcomes of this workflow: a Genome-Wide Association Study (GWAS) plot identifying significant variants, and a clear visualization of the dramatic time and cost savings.</p>
+            </div>
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+                    <h3 class="text-xl font-bold mb-4 text-center">GWAS Manhattan Plot (Simulated)</h3>
+                    <div class="chart-container">
+                        <canvas id="gwasChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+                    <h3 class="text-xl font-bold mb-4 text-center">Time & Cost Savings</h3>
+                    <div class="chart-container">
+                        <canvas id="savingsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="text-center py-10 mt-20 border-t border-slate-200">
+        <p class="text-slate-500">Interactive SPA created from source report.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Comparison Section Logic
+            const comparisonData = {
+                speed: {
+                    traditional: { desc: '<strong>Weeks to Months.</strong> Analysis is bottlenecked by fixed cluster capacity and long job queues, significantly delaying critical research milestones.', bar: '80%' },
+                    cloud: { desc: '<strong>Hours.</strong> Massively parallel processing using thousands of on-demand cores reduces computation time from months to mere hours, accelerating the pace of discovery.', bar: '10%' }
+                },
+                scalability: {
+                    traditional: { desc: '<strong>Fixed & Inelastic.</strong> Scaling for larger studies requires a slow, expensive, and complex hardware procurement and setup process.', bar: '20%' },
+                    cloud: { desc: '<strong>Elastic & On-Demand.</strong> Scales from zero to thousands of VMs in minutes and back down automatically, perfectly matching resource to workload.', bar: '100%' }
+                },
+                cost: {
+                    traditional: { desc: '<strong>High Capital Expense (CapEx).</strong> Requires massive upfront investment in hardware, plus ongoing costs for power, cooling, and maintenance.', bar: '90%' },
+                    cloud: { desc: '<strong>Pay-as-you-go (OpEx).</strong> Converts CapEx to a predictable operational expense. You only pay for the compute you use, with no idle costs.', bar: '25%' }
+                },
+                analytics: {
+                    traditional: { desc: '<strong>Complex & Siloed.</strong> Requires specialized tools and often involves moving or exporting subsets of data for analysis, creating bottlenecks.', bar: '30%' },
+                    cloud: { desc: '<strong>Unified & Interactive.</strong> BigQuery allows for immediate, large-scale SQL-based analysis on the entire dataset, democratizing data access.', bar: '95%' }
+                }
+            };
+
+            const buttonsContainer = document.getElementById('comparison-buttons');
+            const descTraditional = document.getElementById('desc-traditional');
+            const descCloud = document.getElementById('desc-cloud');
+            const barTraditional = document.getElementById('bar-traditional');
+            const barCloud = document.getElementById('bar-cloud');
+
+            buttonsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('comparison-btn')) {
+                    const metric = e.target.dataset.metric;
+                    
+                    // Update button styles
+                    buttonsContainer.querySelectorAll('.comparison-btn').forEach(btn => {
+                        btn.classList.remove('bg-blue-600', 'text-white');
+                        btn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                    });
+                    e.target.classList.add('bg-blue-600', 'text-white');
+                    e.target.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+
+                    // Update content
+                    const data = comparisonData[metric];
+                    descTraditional.innerHTML = data.traditional.desc;
+                    descCloud.innerHTML = data.cloud.desc;
+                    barTraditional.style.width = data.traditional.bar;
+                    barCloud.style.width = data.cloud.bar;
+                }
+            });
+
+            // Chart.js Logic
+            const FONT_COLOR = '#334155'; // slate-700
+            const GRID_COLOR = '#e2e8f0'; // slate-200
+
+            // Helper to wrap long labels
+            function formatLabel(str, maxwidth) {
+                const sections = [];
+                let words = str.split(" ");
+                let temp = "";
+                words.forEach((item, index) => {
+                    if (temp.length > 0) {
+                        let concat = temp + ' ' + item;
+                        if (concat.length > maxwidth) {
+                            sections.push(temp);
+                            temp = "";
+                        } else {
+                            temp = concat;
+                            return;
+                        }
+                    }
+                    if (item.length > maxwidth) {
+                        sections.push(item);
+                    } else {
+                        temp = item;
+                    }
+                    if (index == words.length - 1) {
+                        sections.push(temp);
+                    }
+                });
+                return sections;
+            }
+
+            // GWAS Chart
+            const gwasCtx = document.getElementById('gwasChart').getContext('2d');
+            const gwasData = [];
+            const significanceLine = -Math.log10(5e-8);
+            for (let i = 0; i < 500; i++) {
+                const pValue = Math.random() * 0.99 + 0.01;
+                const negLogP = -Math.log10(pValue);
+                gwasData.push({
+                    x: i,
+                    y: negLogP,
+                    backgroundColor: negLogP > significanceLine ? 'rgba(239, 68, 68, 0.7)' : 'rgba(59, 130, 246, 0.7)',
+                    borderColor: negLogP > significanceLine ? 'rgba(239, 68, 68, 1)' : 'rgba(59, 130, 246, 1)',
+                });
+            }
+
+            new Chart(gwasCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Genetic Variant',
+                        data: gwasData,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Variant Position: ${context.raw.x}, -log10(p-value): ${context.raw.y.toFixed(2)}`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: significanceLine,
+                                    yMax: significanceLine,
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    borderWidth: 2,
+                                    borderDash: [6, 6],
+                                    label: {
+                                        content: 'Significance Threshold',
+                                        enabled: true,
+                                        position: 'end'
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Genomic Position', color: FONT_COLOR },
+                            grid: { color: GRID_COLOR },
+                            ticks: { color: FONT_COLOR }
+                        },
+                        y: {
+                            title: { display: true, text: '-log10(p-value)', color: FONT_COLOR },
+                            grid: { color: GRID_COLOR },
+                            ticks: { color: FONT_COLOR }
+                        }
+                    }
+                }
+            });
+
+            // Savings Chart
+            const savingsCtx = document.getElementById('savingsChart').getContext('2d');
+            new Chart(savingsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Time to Insight', 'Compute Cost Model'],
+                    datasets: [
+                        {
+                            label: 'Traditional HPC',
+                            data: [60, 90], // Representing weeks and high CapEx
+                            backgroundColor: 'rgba(100, 116, 139, 0.7)', // slate-500
+                            borderColor: 'rgba(100, 116, 139, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Google Cloud',
+                            data: [1, 25], // Representing hours and low OpEx
+                            backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue-500
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: FONT_COLOR } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (context.label === 'Time to Insight') {
+                                           label += context.dataset.label === 'Traditional HPC' ? `${context.parsed.y} Weeks` : `${context.parsed.y} Hours`;
+                                        } else {
+                                           label += context.dataset.label === 'Traditional HPC' ? 'High CapEx' : 'Low OpEx';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                color: FONT_COLOR,
+                                callback: function(value, index, values) {
+                                    return formatLabel(this.getLabelForValue(value), 10);
+                                }
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Relative Scale (Lower is Better)', color: FONT_COLOR },
+                            grid: { color: GRID_COLOR },
+                            ticks: { color: FONT_COLOR }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
